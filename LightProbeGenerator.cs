@@ -8,8 +8,8 @@ public class LightProbeGenerator : MonoBehaviour
 	[System.Serializable]
 	public class LightProbeArea
 	{
-		public Bounds ProbeVolume;
-		public Vector3 Subdivisions = Vector3.one * 5;
+		public Bounds ProbeVolume = new Bounds(Vector3.zero, new Vector3(10f, 10f, 10f));
+		public Vector3 Subdivisions = new Vector3(5, 5, 5);
 		public Quaternion Rotation = Quaternion.identity;
 		public int RandomCount = 0;
 	}
@@ -24,7 +24,12 @@ public class LightProbeGenerator : MonoBehaviour
 	public LightProbeArea LightProbeVolumes;
 	public LightProbePlacementType PlacementAlgorithm;
 
-	public void ClearProbes()
+    private void Reset()
+    {
+		ClearProbes();
+    }
+
+    public void ClearProbes()
 	{
 		if (!TryGetComponent<LightProbeGroup>(out var lprobe))
 		{

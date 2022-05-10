@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEditor;
+using UnityEditor.EditorTools;
 using UnityEditor.IMGUI.Controls;
 
 [CustomEditor(typeof(LightProbeGenerator))]
@@ -7,45 +8,74 @@ public class LightProbeGenEditor : Editor
 {
 	private BoxBoundsHandle _boundsHandle = new BoxBoundsHandle();
 	private bool _editBounds = false;
+	private GUIStyle _buttonStyle;
+	private GUILayoutOption[] _editBoundsOptions;
+	private LightProbeGenerator _gen;
+	private GUIContent _editModeButton;
+
 
 	public override void OnInspectorGUI()
 	{
-		DrawDefaultInspector();
+		GUIContent content = new GUIContent(EditorGUIUtility.IconContent("EditCollider").image, 
+			EditorGUIUtility.TrTextContent("Edit bounding volume.\n\n - Hold Alt after clicking control handle to pin center in place." +
+            "\n - Hold Shift after clicking control handle to scale uniformly.").text);
 
-		if (GUILayout.Button("Generate"))
+		_buttonStyle = new GUIStyle(GUI.skin.button);
+
+        EditorGUILayout.BeginHorizontal();
+		GUILayout.Space(70);
+		GUILayout.FlexibleSpace();
+
+        if (_editBounds = GUILayout.Toggle(_editBounds, content, _buttonStyle, _editBoundsOptions))
+        {
+            SceneView.RepaintAll();
+        }
+
+		GUILayout.BeginVertical();
+		GUILayout.Space(10);
+
+		GUILayout.Label("Edit Bounding Volume");
+
+		GUILayout.FlexibleSpace();
+		GUILayout.EndVertical();
+		GUILayout.FlexibleSpace();
+
+		EditorGUILayout.EndHorizontal();
+
+		DrawPropertiesExcluding(serializedObject, "m_Script");
+		EditorGUILayout.Separator();
+
+		EditorGUILayout.BeginHorizontal();
+		GUILayout.FlexibleSpace();
+
+		if (GUILayout.Button("Generate", GUILayout.Width(160), GUILayout.Height(40)))
 		{
 			(target as LightProbeGenerator).GenProbes();
 		}
 
 		EditorGUILayout.Separator();
 
-		if (GUILayout.Button("Clear"))
+		if (GUILayout.Button("Clear", GUILayout.Width(160), GUILayout.Height(40)))
 		{
 			(target as LightProbeGenerator).ClearProbes();
 		}
 
-		EditorGUILayout.Separator();
-
-		if (GUILayout.Button("Edit Bounds"))
-        {
-			_editBounds = !_editBounds;
-        }
+		GUILayout.FlexibleSpace();
+		EditorGUILayout.EndHorizontal();
 	}
 
 	public void OnSceneGUI()
 	{
-		LightProbeGenerator gen = target as LightProbeGenerator;
-
 		if (_editBounds)
         {
-			_boundsHandle.center = gen.LightProbeVolumes.ProbeVolume.center;
-			_boundsHandle.size = gen.LightProbeVolumes.ProbeVolume.size;
+			_boundsHandle.center = _gen.LightProbeVolumes.ProbeVolume.center;
+			_boundsHandle.size = _gen.LightProbeVolumes.ProbeVolume.size;
 			_boundsHandle.wireframeColor = Color.red;
 			_boundsHandle.handleColor = Color.green;
 		}
 
 		if (_editBounds)
-        {
+		{
 			EditorGUI.BeginChangeCheck();
 			_boundsHandle.DrawHandle();
 		}
@@ -54,24 +84,24 @@ public class LightProbeGenEditor : Editor
 		{
 			Undo.RecordObject(target, "ProbeGenerator Move");
 
-			gen.LightProbeVolumes.ProbeVolume.center = Handles.PositionHandle(
-					gen.LightProbeVolumes.ProbeVolume.center, Quaternion.identity);
+			_gen.LightProbeVolumes.ProbeVolume.center = Handles.PositionHandle(
+					_gen.LightProbeVolumes.ProbeVolume.center, Quaternion.identity);
 		}
 
 		if (Tools.current == Tool.Rotate && !_editBounds)
 		{
 			Undo.RecordObject(target, "ProbeGenerator Rotation");
 
-			gen.LightProbeVolumes.Rotation = Handles.RotationHandle(gen.LightProbeVolumes.Rotation, gen.LightProbeVolumes.ProbeVolume.center);
+			_gen.LightProbeVolumes.Rotation = Handles.RotationHandle(_gen.LightProbeVolumes.Rotation, _gen.LightProbeVolumes.ProbeVolume.center);
 		}
 
 		if (Tools.current == Tool.Scale && !_editBounds)
 		{
 			Undo.RecordObject(target, "ProbeGenerator Scale");
 
-			gen.LightProbeVolumes.ProbeVolume.extents = Handles.ScaleHandle(
-							gen.LightProbeVolumes.ProbeVolume.extents,
-							gen.LightProbeVolumes.ProbeVolume.center,
+			_gen.LightProbeVolumes.ProbeVolume.extents = Handles.ScaleHandle(
+							_gen.LightProbeVolumes.ProbeVolume.extents,
+							_gen.LightProbeVolumes.ProbeVolume.center,
 							Quaternion.identity,
 							5.0f);
 		}
@@ -83,8 +113,24 @@ public class LightProbeGenEditor : Editor
 			Bounds newBounds = new Bounds();
 			newBounds.center = _boundsHandle.center;
 			newBounds.size = _boundsHandle.size;
-			gen.LightProbeVolumes.ProbeVolume.center = newBounds.center;
-			gen.LightProbeVolumes.ProbeVolume.extents = newBounds.extents;
+			_gen.LightProbeVolumes.ProbeVolume.center = newBounds.center;
+			_gen.LightProbeVolumes.ProbeVolume.extents = newBounds.extents;
         }
 	}
+
+    private void OnEnable()
+    {
+		_gen = target as LightProbeGenerator;
+		Tools.hidden = true;
+		_editBoundsOptions = new GUILayoutOption[]
+		{
+			GUILayout.Width(35),
+			GUILayout.Height(25)
+		};
+	}
+
+    private void OnDisable()
+    {
+		Tools.hidden = false;
+    }
 }
